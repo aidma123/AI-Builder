@@ -1,0 +1,40 @@
+{
+	"geode": "6.0.0-alpha.2",
+	"gd": {
+		"win": "2.2091",
+		"android": "2.2091",
+		"mac": "2.2091"
+	},
+	"id": "aidma123.ai-builder",
+	"name": "AI Builder",
+	"version": "v0.1.0",
+	"developer": "aidma123",
+	"description": "Describe a section of a level and have Claude build it in the editor.",
+	"dependencies": {
+		"geode.node-ids": ">=v1.23.3"
+	},
+	"settings": {
+		"model": {
+			"type": "string",
+			"name": "Claude model",
+			"description": "Which Claude model builds your levels. Opus is the most capable; Sonnet and Haiku are cheaper and faster.",
+			"default": "claude-opus-5-5",
+			"one-of": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]
+		},
+		"effort": {
+			"type": "string",
+			"name": "Effort",
+			"description": "How hard Claude thinks before answering. Higher is slower and uses more tokens.",
+			"default": "medium",
+			"one-of": ["low", "medium", "high"]
+		},
+		"max-objects": {
+			"type": "int",
+			"name": "Max objects per request",
+			"description": "Upper limit on objects Claude may place in one build.",
+			"default": 300,
+			"min": 10,
+			"max": 2000
+		}
+	}
+}
