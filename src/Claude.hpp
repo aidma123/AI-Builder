@@ -20,7 +20,20 @@ struct PlacedObject {
     double scale = 1;
     bool flipX = false;
     bool flipY = false;
+    // Group IDs local to this build (1, 2, 3...). They are remapped to
+    // unused groups in the level before placing.
+    std::vector<int> groups;
+    int colorChannel = 0; // 0 = object's default colour
+    int zOrder = 0;       // 0 = default
+    // Extra level-string properties, mostly for triggers (key -> value).
+    std::vector<std::pair<int, double>> props;
 };
+
+// Level-string keys Claude may set through `props`. Anything else is dropped
+// so a confused reply can't overwrite position, ID or other core fields.
+bool isAllowedPropKey(int key);
+// Keys whose value is a group ID (and must be remapped like `groups`).
+bool isGroupPropKey(int key);
 
 struct BuildPlan {
     std::string summary;

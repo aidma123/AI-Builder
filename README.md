@@ -12,8 +12,10 @@ Claude.ai accounts can't be signed into from third-party apps. Instead, the mod 
 - API usage is billed to the Anthropic Console account that owns the key. It is separate from a Claude Pro or Max subscription.
 
 ## How building works
-1. `src/Claude.cpp` sends your prompt to `POST /v1/messages` with a system prompt that explains the editor's grid and the object IDs Claude may use. It also sends a JSON schema (`output_config.format`) so the reply is always a list of `{id, col, row, rotation, scale, flip_x, flip_y}` objects.
-2. `src/main.cpp` turns that list into a level string, starting from the grid column in the middle of the screen, and calls `createObjectsFromString` so the build can be undone. It then checks where the first object actually landed and moves everything if the editor's coordinates don't match what the mod expected.
+1. `src/Claude.cpp` sends your prompt to `POST /v1/messages` with a system prompt that explains the editor's grid and the object IDs Claude may use. It also sends a JSON schema (`output_config.format`) so the reply is always a list of objects with `id`, grid position, rotation, scale, flips, `groups`, `color_channel`, `z_order` and `props` (extra level-string keys for triggers).
+   - The prompt lists gameplay, decoration and trigger object IDs and trigger property keys, checked against [gd-info-explorer](https://github.com/flowvix/gd-info-explorer)'s object list and the [GD level-string docs](https://github.com/Wyliemaster/gddocs).
+   - Only a fixed list of trigger property keys is accepted (`isAllowedPropKey` in `src/Claude.cpp`), so a bad reply can't overwrite an object's ID or position.
+2. `src/main.cpp` renumbers the build's groups (Claude uses 1, 2, 3...) to group IDs not yet used in the level, using `LevelEditorLayer::getNextFreeGroupID`. It then turns the list into a level string, starting from the grid column in the middle of the screen, and calls `createObjectsFromString` so the build can be undone. It then checks where the first object actually landed and moves everything if the editor's coordinates don't match what the mod expected.
 3. The new objects are left selected.
 
 Settings: model (`claude-opus-5-5` by default, or Sonnet 5.5 / Haiku 5.5), effort, and the maximum number of objects per build.

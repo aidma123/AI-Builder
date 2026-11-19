@@ -7,7 +7,7 @@
 	},
 	"id": "aidma123.ai-builder",
 	"name": "AI Builder",
-	"version": "v0.1.0",
+	"version": "v0.2.0",
 	"developer": "aidma123",
 	"description": "Describe a section of a level and have Claude build it in the editor.",
 	"dependencies": {
@@ -32,7 +32,7 @@
 			"type": "int",
 			"name": "Max objects per request",
 			"description": "Upper limit on objects Claude may place in one build.",
-			"default": 300,
+			"default": 400,
 			"min": 10,
 			"max": 2000
 		}

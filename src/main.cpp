@@ -5,6 +5,9 @@
 #include "Popups.hpp"
 
 #include <cmath>
+#include <map>
+#include <set>
+#include <unordered_set>
 
 using namespace geode::prelude;
 using namespace ai_builder;
@@ -19,6 +22,47 @@ constexpr float GROUND_ROW_CENTER = 105.f;
 } // namespace
 
 class $modify(AIEditorUI, EditorUI) {
+    // Whether a trigger property holds a group ID. The pulse trigger's
+    // target (51) is a colour channel unless its target type (52) is 1.
+    static bool propTargetsGroup(PlacedObject const& o, int key) {
+        if (!isGroupPropKey(key)) return false;
+        if (o.id == 1006 && key == 51) {
+            for (auto const& [k, v] : o.props) {
+                if (k == 52) return static_cast<int>(v) == 1;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    static std::string formatValue(double value) {
+        if (std::abs(value - std::round(value)) < 1e-6) {
+            return std::to_string(static_cast<long long>(std::llround(value)));
+        }
+        return fmt::format("{:.3f}", value);
+    }
+
+    // Claude numbers its groups 1, 2, 3... Map each to a group that isn't
+    // used anywhere in the level yet, so builds never hijack existing groups.
+    std::map<int, int> allocateGroups(BuildPlan const& plan) {
+        std::set<int> local;
+        for (auto const& o : plan.objects) {
+            for (int g : o.groups) local.insert(g);
+            for (auto const& [key, value] : o.props) {
+                if (propTargetsGroup(o, key) && value >= 1) local.insert(static_cast<int>(value));
+            }
+        }
+
+        std::map<int, int> result;
+        std::unordered_set<int> taken;
+        for (int g : local) {
+            int real = m_editorLayer->getNextFreeGroupID(taken);
+            if (real <= 0 || real > 9999) real = g; // editor gave us nothing usable
+            taken.insert(real);
+            result[g] = real;
+        }
+        return result;
+    }
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
 
@@ -30,9 +74,9 @@ class $modify(AIEditorUI, EditorUI) {
 
         // Sit next to undo/redo/delete if node-ids gave us that menu,
         // otherwise make a small menu of our own in the top left.
-        if (auto menu = this->getChildByID("undo-menu")) {
-            menu->addChild(btn);
-            menu->updateLayout();
+        if (auto undoMenu = this->getChildByID("undo-menu")) {
+            undoMenu->addChild(btn);
+            undoMenu->updateLayout();
         } else {
             auto winSize = CCDirector::get()->getWinSize();
             auto menu = CCMenu::create();
@@ -69,6 +113,12 @@ class $modify(AIEditorUI, EditorUI) {
             };
         };
 
+        auto groupMap = this->allocateGroups(plan);
+        auto realGroup = [&](int local) {
+            auto it = groupMap.find(local);
+            return it != groupMap.end() ? it->second : local;
+        };
+
         // Level-string coordinates drop the 90-unit ground offset.
         std::string str;
         for (auto const& o : plan.objects) {
@@ -78,6 +128,22 @@ class $modify(AIEditorUI, EditorUI) {
             if (o.flipY) str += ",5,1";
             if (std::abs(o.rotation) > 0.01) str += fmt::format(",6,{:.2f}", o.rotation);
             if (std::abs(o.scale - 1.0) > 0.001) str += fmt::format(",32,{:.3f}", o.scale);
+            if (o.colorChannel > 0) str += fmt::format(",21,{}", o.colorChannel);
+            if (o.zOrder != 0) str += fmt::format(",25,{}", o.zOrder);
+
+            if (!o.groups.empty()) {
+                std::vector<std::string> ids;
+                for (int g : o.groups) ids.push_back(std::to_string(realGroup(g)));
+                str += ",57," + string::join(ids, ".");
+            }
+
+            for (auto const& [key, value] : o.props) {
+                if (propTargetsGroup(o, key)) {
+                    str += fmt::format(",{},{}", key, realGroup(static_cast<int>(value)));
+                } else {
+                    str += fmt::format(",{},{}", key, formatValue(value));
+                }
+            }
             str += ";";
         }
 
